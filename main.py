@@ -1,26 +1,43 @@
-# Example file showing a circle moving on screen
+# Example file showing a circle moving on surface
 import copy
 import random
 
 import pygame
+import pygame_menu
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 DIRECTIONS = ["up", "down", "left", "right"]
 
+highscore = 0
 
 
+pygame.init()
+surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+menu = pygame_menu.Menu('Welcome', 400, 300,
+                            theme=pygame_menu.themes.THEME_BLUE)
 
 def main():
+    global highscore
+
+
+    menu.add.label('Highscore: ' + str(highscore), label_id='highscore')
+    menu.add.button('Play', run_game)
+    menu.add.button('Quit', pygame_menu.events.EXIT)
+
+
+
+    menu.mainloop(surface)
+
+def run_game():
     # pygame setup
-    pygame.init()
+    global highscore
     MOVEEVENT = pygame.USEREVENT + 1
     pygame.time.set_timer(MOVEEVENT, 500)
-    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     clock = pygame.time.Clock()
     running = True
-    dt = 0
-    circle_radius = 20
+    score = 0
+
 
     trail = []
     trail.append(pygame.Vector2(440, 400))
@@ -29,10 +46,12 @@ def main():
 
     player_pos = pygame.Vector2(400, 400)
 
+
+
+    drawGrid(surface, pygame.Color("white"))
+
     food_pos = addFood(player_pos, trail)
     increase_length = False
-
-    drawGrid(screen, pygame.Color("white"))
 
     while running:
         # poll for events
@@ -50,21 +69,22 @@ def main():
                     running = False
                 if food_collision(player_pos, food_pos):
                     food_pos = addFood(player_pos, trail)
+                    score += 1
+                    if score > highscore:
+                        highscore = score
+                        menu.get_widget('highscore').set_title('Highscore: ' + str(highscore))
                     increase_length = True
 
+        # fill the surface with a color to wipe away anything from last frame
+        surface.fill("gray")
 
-        # fill the screen with a color to wipe away anything from last frame
-        screen.fill("gray")
-
-        pygame.draw.rect(screen, pygame.Color("red"), pygame.Rect(player_pos.x, player_pos.y, 40, 40))
-        print(len(trail))
+        pygame.draw.rect(surface, pygame.Color("red"), pygame.Rect(player_pos.x, player_pos.y, 40, 40))
         for item in trail:
-            print(item.x, item.y)
-            pygame.draw.rect(screen, pygame.Color("red"), pygame.Rect(item.x, item.y, 40, 40))
+            pygame.draw.rect(surface, pygame.Color("red"), pygame.Rect(item.x, item.y, 40, 40))
 
-        pygame.draw.rect(screen, pygame.Color("green"), pygame.Rect(food_pos.x, food_pos.y, 40, 40))
+        pygame.draw.rect(surface, pygame.Color("green"), pygame.Rect(food_pos.x, food_pos.y, 40, 40))
 
-        drawGrid(screen, pygame.Color("white"))
+        drawGrid(surface, pygame.Color("white"))
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
@@ -76,16 +96,13 @@ def main():
         if keys[pygame.K_d]:
             last_pressed = "right"
 
-
-
-        # flip() the display to put your work on screen
+        # flip() the display to put your work on surface
         pygame.display.flip()
 
         # limits FPS to 60
         # dt is delta time in seconds since last frame, used for framerate-
         # independent physics.
         clock.tick_busy_loop(60)
-    pygame.quit()
 
 def turn(head_direction, direction):
     if head_direction != direction:
@@ -157,28 +174,31 @@ def snapToGrid(pos):
     y = (pos.y - pos.y % blockSize)
     return pygame.Vector2(x, y)
 
-def drawGrid(screen, color):
+def drawGrid(surface, color):
     blockSize = 40 #Set the size of the grid block
     for x in range(0, WINDOW_WIDTH, blockSize):
         for y in range(0, WINDOW_HEIGHT, blockSize):
             rect = pygame.Rect(x, y, blockSize, blockSize)
-            pygame.draw.rect(screen, color, rect, 1)
+            pygame.draw.rect(surface, color, rect, 1)
 
 def addFood(player_pos, trail):
     # place food on a random spot on the grid that is not occupied by the snake
     while True:
-        randomX, randomY = randomCoords20()
+        randomX, randomY = randomCoords40()
         if randomX == player_pos.x and randomY == player_pos.y:
             continue
+        break_flag = False
         for item in trail:
             if randomX == item.x and randomY == item.y:
-                continue
+                break_flag = True
+        if break_flag:
+            continue
         break
 
 
     return pygame.Vector2(randomX, randomY)
 
-def randomCoords20():
+def randomCoords40():
     randomX = random.randint(0, WINDOW_WIDTH / 40) * 40
     randomY = random.randint(0, WINDOW_HEIGHT / 40) * 40
     return randomX, randomY
